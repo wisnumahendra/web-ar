@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>AR Produk Cokelat</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.7.2/aframe/build/aframe-ar.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script>
+    AFRAME.registerComponent('auto-rotate', {
+      schema: { speed: { type: 'number', default: 0.2 } },
+      tick: function (time, timeDelta) {
+        let rotation = this.el.getAttribute('rotation');
+        rotation.y += this.data.speed * (timeDelta / 16);
+        this.el.setAttribute('rotation', rotation);
+      }
+    });
+
+    AFRAME.registerComponent('drag-rotate', {
+      schema: { speed: { default: 1 } },
+      init: function () {
+        this.el.sceneEl.addEventListener('mousedown', this.startDrag.bind(this));
+        this.el.sceneEl.addEventListener('mousemove', this.drag.bind(this));
+        this.el.sceneEl.addEventListener('mouseup', this.stopDrag.bind(this));
+        this.el.sceneEl.addEventListener('touchstart', this.startDrag.bind(this));
+        this.el.sceneEl.addEventListener('touchmove', this.drag.bind(this));
+        this.el.sceneEl.addEventListener('touchend', this.stopDrag.bind(this));
+        this.isDragging = false;
+        this.previousMouseEvent = null;
+      },
+      startDrag: function (e) {
+        this.isDragging = true;
+        this.previousMouseEvent = e.type.startsWith("touch") ? e.touches[0] : e;
+      },
+      drag: function (e) {
+        if (!this.isDragging) return;
+        const clientX = e.type.startsWith("touch") ? e.touches[0].clientX : e.clientX;
+        const deltaX = clientX - (this.previousMouseEvent?.clientX || clientX);
+        const rotation = this.el.getAttribute("rotation");
+        this.el.setAttribute("rotation", {
+          x: rotation.x,
+          y: rotation.y - deltaX * this.data.speed,
+          z: rotation.z
+        });
+        this.previousMouseEvent = { clientX };
+      },
+      stopDrag: function () {
+        this.isDragging = false;
+        this.previousMouseEvent = null;
+      }
+    });
+  </script>
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+  
+    body, html {
+      overflow: hidden;
+      height: 100%;
+      font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+  
+    #ui-overlay {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      width: 95%;
+      max-width: 500px;
+      z-index: 10;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+
+    /* Button Styles */
+    .ar-btn {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 8px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #8B4513, #A0522D);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ar-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(145deg, #A0522D, #8B4513);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .ar-btn:hover::before {
+      opacity: 1;
+    }
+
+    .btn-icon {
+      font-size: 1.4rem;
+      margin-bottom: 6px;
+      position: relative;
+      z-index: 1;
+      transition: transform 0.3s ease;
+    }
+
+    .ar-btn:hover .btn-icon {
+      transform: translateY(-3px);
+    }
+
+    .btn-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      position: relative;
+      z-index: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* Active State */
+    .ar-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Modern Info Box Styles */
+    .info-box {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: rgba(255, 255, 255, 0.78);
+      color: #333;
+      padding: 25px;
+      width: 90%;
+      max-width: 400px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      z-index: 10;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      text-align: center;
+      border: 1px solid rgba(0,0,0,0.05);
+      opacity: 0;
+    }
+  
+    .info-box.show {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+  
+    .info-box h2 {
+      margin: 0 0 15px;
+      font-size: 1.4rem;
+      color: #5D4037;
+      font-weight: 600;
+      position: relative;
+      padding-bottom: 10px;
+    }
+
+    .info-box h2:after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 3px;
+      background: linear-gradient(90deg, #8B4513, #D2691E);
+      border-radius: 3px;
+    }
+  
+    .info-box p {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      color: #555;
+    }
+  
+    .info-box .btn-kembali {
+      background: linear-gradient(135deg, #8B4513, #A0522D);
+      color: white;
+      font-weight: 600;
+      border: none;
+      padding: 10px 25px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(139, 69, 19, 0.2);
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+  
+    .info-box .btn-kembali:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(139, 69, 19, 0.3);
+    }
+
+    .info-box .btn-kembali:active {
+      transform: translateY(0);
+    }
+
+    .info-icon {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      color: #8B4513;
+      background: linear-gradient(135deg, #F5D7B3, #E6C9A8);
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .product-highlight {
+      display: flex;
+      align-items: center;
+      background: #F9F5F0;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      text-align: left;
+    }
+
+    .product-highlight i {
+      color: #8B4513;
+      font-size: 1.2rem;
+      margin-right: 10px;
+      min-width: 20px;
+    }
+
+    .product-highlight span {
+      font-size: 0.9rem;
+      color: #5D4037;
+    }
+
+    .process-step {
+      display: flex;
+      margin-bottom: 10px;
+      align-items: flex-start;
+    }
+
+    .process-step .step-number {
+      background: #8B4513;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+
+    .process-step .step-text {
+      font-size: 0.9rem;
+      color: #555;
+      text-align: left;
+    }
+
+    .info-box.show ~ #ui-overlay {
+      opacity: 0.5;
+      filter: blur(1px);
+      transition: opacity 0.3s ease, filter 0.3s ease;
+    }
+
+
+    /* Responsive adjustments */
+    @media (max-width: 400px) {
+      #ui-overlay button {
+        width: 80px;
+        height: 80px;
+      }
+
+      #ui-overlay button span {
+        font-size: 0.7rem;
+      }
+
+      #ui-overlay button i {
+        font-size: 1.2rem;
+      }
+
+      .info-box {
+        padding: 20px 15px;
+        width: 95%;
+      }
+
+      .info-box h2 {
+        font-size: 1.3rem;
+      }
+
+      .info-box p {
+        font-size: 0.85rem;
+      }
+
+      .info-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+      }
+    }
+
+  </style>
+  
+</head>
+<body>
+  <div id="ui-overlay">
+    <button id="btn-info" class="ar-btn">
+      <div class="btn-icon">
+        <i class="fas fa-book-open"></i>
+      </div>
+      <span class="btn-label">Story Of Brand</span>
+    </button>
+    
+    <button id="btn-kandungan" class="ar-btn">
+      <div class="btn-icon">
+        <i class="fas fa-seedling"></i>
+      </div>
+      <span class="btn-label">Product Knowledge</span>
+    </button>
+    
+    <button id="btn-proses" class="ar-btn">
+      <div class="btn-icon">
+        <i class="fas fa-industry"></i>
+      </div>
+      <span class="btn-label">Production Process</span>
+    </button>
+  </div>
+
+  <!-- Info Box 1 - Story of Brand -->
+  <div class="info-box" id="info-box">
+    <div class="info-icon">
+      <i class="fas fa-landmark"></i>
+    </div>
+    <h2>STORY OF BRAND</h2>
+    <p><span style="font-weight:600;color:#8B4513;">Prascho</span> merupakan brand cokelat premium asli Bali yang menghadirkan pengalaman cokelat berkualitas tinggi dengan sentuhan modern.</p>
+    
+    <div class="product-highlight">
+      <i class="fas fa-map-marker-alt"></i>
+      <span>Berbasis di Bali dengan bahan baku kakao lokal terbaik</span>
+    </div>
+    
+    <div class="product-highlight">
+      <i class="fas fa-star"></i>
+      <span>Menggunakan biji kakao fermentasi grade AA dan A</span>
+    </div>
+    
+    <div class="product-highlight">
+      <i class="fas fa-heart"></i>
+      <span>Solusi cokelat premium tanpa perlu impor</span>
+    </div>
+    
+    <button class="btn-kembali">Kembali</button>
+  </div>
+
+  <!-- Info Box 2 - Product Knowledge -->
+  <div class="info-box" id="box-kandungan">
+    <div class="info-icon">
+      <i class="fas fa-wine-bottle"></i>
+    </div>
+    <h2>DARK 60% VEGAN</h2>
+    <p>Cokelat batang premium dengan kandungan kakao 60%, diformulasikan khusus untuk vegan dan mereka yang alergi protein hewani.</p>
+    
+    <div class="product-highlight">
+      <i class="fas fa-leaf"></i>
+      <span>Bahan: Biji kakao fermentasi single origin Jembrana-Bali</span>
+    </div>
+    
+    <div class="product-highlight">
+      <i class="fas fa-seedling"></i>
+      <span>Pengganti susu: Susu kedelai dan lemak kakao</span>
+    </div>
+    
+    <div class="product-highlight">
+      <i class="fas fa-candy-cane"></i>
+      <span>Pemanis: Gula kelapa alami</span>
+    </div>
+    
+    <div class="product-highlight">
+      <i class="fas fa-heartbeat"></i>
+      <span>Cocok untuk diet vegan dan alergi laktosa</span>
+    </div>
+    
+    <button class="btn-kembali">Kembali</button>
+  </div>
+
+  <!-- Info Box 3 - Production Process -->
+  <div class="info-box" id="box-proses">
+    <div class="info-icon">
+      <i class="fas fa-cogs"></i>
+    </div>
+    <h2>PRODUCTION PROCESS</h2>
+    <p>Proses produksi kami yang canggih memastikan kualitas terbaik dari biji kakao hingga menjadi produk akhir.</p>
+    
+    <div class="process-step">
+      <div class="step-number">1</div>
+      <div class="step-text">Penerimaan biji kakao fermentasi berkualitas tinggi</div>
+    </div>
+    
+    <div class="process-step">
+      <div class="step-number">2</div>
+      <div class="step-text">Roasting untuk mengembangkan cita rasa</div>
+    </div>
+    
+    <div class="process-step">
+      <div class="step-number">3</div>
+      <div class="step-text">Winnowing untuk memisahkan kulit biji</div>
+    </div>
+    
+    <div class="process-step">
+      <div class="step-number">4</div>
+      <div class="step-text">Grinding dan mixing bahan</div>
+    </div>
+    
+    <div class="process-step">
+      <div class="step-number">5</div>
+      <div class="step-text">Tempering dan pencetakan</div>
+    </div>
+    
+    <div class="process-step">
+      <div class="step-number">6</div>
+      <div class="step-text">Pendinginan dan pengemasan</div>
+    </div>
+    
+    <button class="btn-kembali">Kembali</button>
+  </div>
+
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+
+    <!-- Gunakan custom marker .mind -->
+    <a-nft
+      type="nft"
+      url="asset/marker/marker2"
+      smooth="true"
+      smoothCount="10"
+      smoothTolerance="0.01"
+      smoothThreshold="5"
+      id="marker">
+  
+      <!-- Model 3D Cokelat -->
+      <a-gltf-model 
+        src="asset/model/cokelatmodel.glb" 
+        position="0 0 0"
+        scale="25 25 25"
+        drag-rotate="speed: 1"
+        id="cokelat-model"
+        animation__show="property: scale; to: 25 25 25; dur: 600; easing: easeOutElastic; startEvents: show-model"
+        animation__slidein="property: position; to: 0 0 0; dur: 600; easing: easeOutElastic; startEvents: show-model"
+        animation__hide="property: scale; to: 25 25 25; dur: 300; easing: easeInSine; startEvents: hide-model"
+        animation__slideout="property: position; to: 0 -2 0; dur: 300; easing: easeInSine; startEvents: hide-model">
+      </a-gltf-model>
+  
+    </a-nft>
+  
+    <a-entity camera></a-entity>
+  </a-scene>
+  
+
+  <script src="script.js"></script>
+</body>
+</html>
