@@ -331,7 +331,7 @@
   
 </head>
 <body>
-  <div id="ui-overlay">
+  <div id="ui-overlay" style="display: none;">
     <button id="btn-info" class="ar-btn">
       <div class="btn-icon">
         <i class="fas fa-book-open"></i>
@@ -452,36 +452,25 @@
     <button class="btn-kembali">Kembali</button>
   </div>
 
+  <!-- A-Frame AR Scene -->
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-
-    <!-- Gunakan custom marker .mind -->
-    <a-nft
-      type="nft"
-      url="asset/marker/marker2"
-      smooth="true"
-      smoothCount="10"
-      smoothTolerance="0.01"
-      smoothThreshold="5"
-      id="marker">
-  
-      <!-- Model 3D Cokelat -->
+    
+    <a-marker type="pattern" url="asset/marker/logo.patt" id="marker">
       <a-gltf-model 
-        src="asset/model/cokelatmodel.glb" 
-        position="0 0 0"
-        scale="25 25 25"
-        drag-rotate="speed: 1"
-        id="cokelat-model"
-        animation__show="property: scale; to: 25 25 25; dur: 600; easing: easeOutElastic; startEvents: show-model"
-        animation__slidein="property: position; to: 0 0 0; dur: 600; easing: easeOutElastic; startEvents: show-model"
-        animation__hide="property: scale; to: 25 25 25; dur: 300; easing: easeInSine; startEvents: hide-model"
-        animation__slideout="property: position; to: 0 -2 0; dur: 300; easing: easeInSine; startEvents: hide-model">
+      src="asset/model/cokelatmodel.glb" 
+      position="0 0 0" scale="25 25 25"  
+      drag-rotate="speed: 1 " 
+      id="cokelat-model"
+      animation__show="property: scale; to: 25 25 25; dur: 600; easing: easeOutElastic; startEvents: show-model"
+      animation__slidein="property: position; to: 0 0 0; dur: 600; easing: easeOutElastic; startEvents: show-model"
+      animation__hide="property: scale; to: 25 25 25; dur: 300; easing: easeInSine; startEvents: hide-model"
+      animation__slideout="property: position; to: 0 -2 0; dur: 300; easing: easeInSine; startEvents: hide-model">
       </a-gltf-model>
-  
-    </a-nft>
-  
+    </a-marker>
     <a-entity camera></a-entity>
   </a-scene>
-  
+
+  <audio id="bg-music" src="asset/musik/opening.mp3" preload="auto" loop></audio>
 
   <script src="script.js"></script>
 </body>
